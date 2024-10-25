@@ -1,0 +1,235 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <link rel="shortcut icon" type="image/x-icon" href="">
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.6.2/plyr.css" />
+    <link href="https://fonts.googleapis.com/css?family=Poppins|Quattrocento+Sans" rel="stylesheet"/>
+    <script src="https://cdn.plyr.io/3.6.3/plyr.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <style>
+        html, body {
+            font-family: 'Poppins', sans-serif;
+            background: #111;
+            color: #fff;
+            margin: 0;
+            padding: 0;
+        }
+
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 9999;
+        }
+
+        .loading-text {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            margin: auto;
+            text-align: center;
+            width: 100%;
+            height: 100px;
+            line-height: 100px;
+            font-size: 24px;
+        }
+
+        .loading-text span {
+            display: inline-block;
+            margin: 0 5px;
+            color: #00b3ff;
+            font-family: 'Quattrocento Sans', sans-serif;
+        }
+
+        /* Video container */
+        .video-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin: 50px auto;
+        }
+
+        .plyr__video-wrapper {
+            border: 2px solid #00b3ff;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        /* Popup styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            text-align: center;
+            padding-top: 10%;
+        }
+
+        .modal-content {
+            background-color: #222;
+            padding: 20px;
+            border-radius: 10px;
+            display: inline-block;
+            color: white;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .modal-content h2 {
+            margin-bottom: 20px;
+        }
+
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: white;
+        }
+
+        /* Button styles */
+        .modal-buttons {
+            margin-top: 20px;
+        }
+
+        .modal-buttons button {
+            background-color: #0088cc;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 5px;
+            font-size: 18px;
+        }
+
+        .modal-buttons button:hover {
+            background-color: #0077b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading">
+        <div class="loading-text">
+            <span>L</span><span>o</span><span>a</span><span>d</span><span>i</span><span>n</span><span>g</span>
+        </div>
+    </div>
+
+    <!-- Video player -->
+    <div class="video-container">
+        <video id="player" autoplay muted controls crossorigin poster="POSTER_LINK" playsinline>
+            <source type="application/vnd.apple.mpegurl" src="server.php?v=ptvpk">
+        </video>
+    </div>
+
+    <!-- The Modal for Telegram Join -->
+    <div id="telegramModal" class="modal">
+        <div class="modal-content">
+            <h2> Join for more live links </h2>
+            <p></p>
+            <div class="modal-buttons">
+                <button id="okBtn">OK</button>
+                <button id="cancelBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        setTimeout(videovisible, 4000);
+        function videovisible() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const videoElement = document.querySelector("video");
+            const videoSource = videoElement.getElementsByTagName("source")[0].src;
+            const playerOptions = {};
+
+            // Disable autoplay until user clicks OK or Cancel
+            videoElement.pause();
+
+            // Show the modal to block the video
+            const modal = document.getElementById('telegramModal');
+            modal.style.display = 'block';
+
+            // Modal buttons
+            const okBtn = document.getElementById('okBtn');
+            const cancelBtn = document.getElementById('cancelBtn');
+
+            // OK button: redirects to Telegram and plays video
+            okBtn.onclick = function() {
+                window.open('https://t.me/+PFPtywAHplE2Nzk1', '_blank'); // Open Telegram link
+                modal.style.display = 'none';
+                videoElement.muted = false; // Unmute video
+                videoElement.play(); // Play the video
+            };
+
+            // Cancel button: hides modal and plays video
+            cancelBtn.onclick = function() {
+                modal.style.display = 'none';
+                videoElement.muted = false; // Unmute video
+                videoElement.play(); // Play the video
+            };
+
+            // Plyr and HLS setup
+            if (Hls.isSupported()) {
+                const hlsConfig = { maxMaxBufferLength: 100 };
+                const hls = new Hls(hlsConfig);
+                hls.loadSource(videoSource);
+                hls.on(Hls.Events.MANIFEST_PARSED, function(event, data) {
+                    const qualityOptions = hls.levels.map(level => level.height);
+                    playerOptions.quality = {
+                        default: qualityOptions[0],
+                        options: qualityOptions,
+                        forced: true,
+                        onChange: quality => {
+                            window.hls.levels.forEach((level, index) => {
+                                if (level.height === quality) window.hls.currentLevel = index;
+                            });
+                        }
+                    };
+                    new Plyr(videoElement, playerOptions);
+                });
+                hls.attachMedia(videoElement);
+                window.hls = hls;
+            } else {
+                new Plyr(videoElement, playerOptions);
+            }
+        });
+    </script>
+</body>
+</html>
+<a href="https://t.me/+PFPtywAHplE2Nzk1" target="_blank">
+    <button style="background-color: #0088cc; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer;">
+        Join Telegram Channel
+    </button>
+</a>
+<!-- BEGIN: Powered by Supercounters.com -->
+<center><script type="text/javascript" src="//widget.supercounters.com/ssl/online_i.js"></script><script type="text/javascript">sc_online_i(1700460,"ffffff","e61c1c");</script><br><noscript><a href="https://www.supercounters.com/">free online counter</a></noscript>
+</center>
+<!-- END: Powered by Supercounters.com -->
+
+<!-- BEGIN: Powered by Supercounters.com -->
+<center><script type="text/javascript" src="//widget.supercounters.com/ssl/hit.js"></script><script type="text/javascript">sc_hit(1700459,0,5);</script><br><noscript><a href="http://www.supercounters.com/">free online counter</a></noscript>
+</center>
+<!-- END: Powered by Supercounters.com -->
+
+<script>document.write(atob("PHNjcmlwdCBhc3luYz0iYXN5bmMiIGRhdGEtY2Zhc3luYz0iZmFsc2UiIHNyYz0iLy90cmVhZGhvc3BpdGFsaXR5LmNvbS8xOTcyMzhiMmRiYTA1Y2E0NTAyNWQyZTExMGE0OTU0Yy9pbnZva2UuanMiPjwvc2NyaXB0Pgo8ZGl2IGlkPSJjb250YWluZXItMTk3MjM4YjJkYmEwNWNhNDUwMjVkMmUxMTBhNDk1NGMiPjwvZGl2Pg=="));</script>
